@@ -11,7 +11,7 @@
 |---|---|---|
 | **Chrome / Edge** | `upbookmarks-chrome-0.0.1.zip` | **解压**到任意目录 → `chrome://extensions` → 打开「开发者模式」→「加载已解压的扩展程序」→ 选**解压出来的那个目录** |
 | **Firefox** | `upbookmarks-firefox-0.0.1.xpi` | 先把 `about:config` 里的 `xpinstall.signatures.required` 设为 `false`，再 `about:addons` → 齿轮 → 「从文件安装附加组件」 |
-| 想审查或自行构建 | `upbookmarks-source-0.0.1.zip` | 解压后 `node tests/run-all.mjs`（184 项断言，无需网络与令牌） |
+| 想审查或自行构建 | `upbookmarks-source-0.0.1.zip` | 解压后 `node tests/run-all.mjs`（185 项断言，无需网络与令牌） |
 
 > **Chrome 注意**：必须选**解压出来的目录**，不是 zip 文件本身。Chromium 不接受打包文件。
 >

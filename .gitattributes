@@ -1,0 +1,23 @@
+# 统一换行符为 LF。
+#
+# 为什么需要：本项目在 Windows 上开发、在 Linux 上跑 CI。
+# 若不指定，git 检出时会把文本文件转成 CRLF，带来两个实际问题：
+#   1. 与 Linux 协作者之间产生"整个文件都改了"的假 diff；
+#   2. 某些脚本解析器对 shebang 后的 CRLF 敏感，Node 脚本可能因此报错。
+#
+# `text=auto` 让 git 自行识别文本文件，`eol=lf` 强制工作区使用 LF。
+* text=auto eol=lf
+
+# 二进制文件不作任何换行符转换（否则会损坏内容）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.xpi binary
+*.kdbx binary
+
+# 这些文件必须保持原样，绝不转换
+*.pem binary
+*.key binary

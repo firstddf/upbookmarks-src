@@ -170,7 +170,7 @@ node tools/diagnose-gitee-auth.mjs --repo <owner>/<name>      # 写入探测报 
 | `manifest/` + `src/ui/` + `src/background.js` | ✅ | `tests/validate-extension.mjs`，**14/14** 静态校验 |
 | **真实浏览器验收（E1–E5、E9、E10）** | ⏸ **需要人工加载扩展** | 见下方步骤 |
 
-一键跑全部：`node tests/run-all.mjs` → **7 个测试文件，149 项断言全绿**，无需网络与令牌。
+一键跑全部：`node tests/run-all.mjs` → **8 个测试文件，185 项断言全绿**，无需网络与令牌。
 
 ### V12（并发冲突重试）已覆盖 —— 且比原计划更强
 
