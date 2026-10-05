@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>upbookmarks · 诊断</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 13px/1.6 ui-monospace, Consolas, monospace; margin: 16px; max-width: 900px; }
+    h1 { font-size: 16px; }
+    h2 { font-size: 14px; margin-top: 18px; }
+    pre { background: #8881; padding: 10px; border-radius: 6px; overflow: auto; white-space: pre-wrap; }
+    .ok { color: #15803d; }
+    .bad { color: #b42318; }
+    button { padding: 6px 12px; margin-right: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<h1>upbookmarks 诊断</h1>
+<p>这一页只读地显示扩展实际存储的内容，用于定位"令牌存不进去"这类问题。</p>
+<p>
+  <button id="refresh">重新读取</button>
+  <button id="copy">复制报告</button>
+  <button id="write-config">用 configStore 写一次测试配置</button>
+  <button id="raw-write">用 storage.local 直接写一次</button>
+  <button id="wipe-token">清空令牌（测试用）</button>
+</p>
+<pre id="out">读取中…</pre>
+<script type="module" src="debug.js"></script>
+</body>
+</html>

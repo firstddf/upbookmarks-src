@@ -1,0 +1,47 @@
+name: release
+
+# 推送形如 v0.0.1 的标签时自动测试、打包并创建 Release。
+#
+# 产物（见 tools/release.mjs）：
+#   upbookmarks-chrome-<ver>.zip   解压即用（Chrome / Edge）
+#   upbookmarks-firefox-<ver>.xpi  Firefox 直接安装
+#   upbookmarks-source-<ver>.zip   完整源码
+#
+# 无需任何密钥：全部测试都是本地的（假 Gitee + 假浏览器 + 真加密）。
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 打包脚本用 tar 生成 zip（Windows 与 Linux 的 tar 都支持）
+      - name: 生成发布产物（含跑测试）
+        run: node tools/release.mjs
+
+      - name: 汇总产物
+        run: ls -lh release/
+
+      - name: 创建 Release 并上传附件
+        uses: softprops/action-gh-release@v2
+        with:
+          name: upbookmarks ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: release/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

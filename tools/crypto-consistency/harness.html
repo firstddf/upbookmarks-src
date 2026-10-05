@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>upbookmarks crypto consistency</title>
+<style>
+  body { font-family: monospace; font-size: 13px; margin: 12px; }
+  #out { white-space: pre; }
+  .k { color: #666; }
+</style>
+</head>
+<body>
+<h3>WebCrypto 一致性测试（浏览器侧）</h3>
+<pre id="out">RUNNING</pre>
+<script>
+// 与 docs/03-parameters.md 相同参数；所有输入固定，输出必须与 Node 完全一致。
+const P = {
+  CIPHER: 'AES-GCM',
+  IV_BYTES: 12,
+  DEK_BYTES: 32,
+  KEK_BYTES: 32,
+  GCM_TAG_BITS: 128,
+  AAD_PREFIX: 'upbookmarks',
+  WRAP_IV_BYTES: 12,
+  KDF_PASSWORD_ALGO: 'PBKDF2',
+  KDF_PASSWORD_ITERATIONS: 600000,
+  KDF_PASSWORD_SALT_BYTES: 16,
+  KDF_RECOVERY_INFO: 'upbookmarks/recovery-key/v1',
+  KDF_RECOVERY_SALT_BYTES: 16,
+  RECOVERY_CODE_BITS: 160,
+  FORMAT_VERSION: 1,
+};
+
+const PASSWORD = '端到端-测试-口令-短语-六个词-以上';
+const RECOVERY_CODE = 'ABCDE-FGHJK-MNPQR-STVWX-YZ234-56789-ABCDE-FGHJK';
+const AAD_MACHINE = 'desktop';
+const AAD_SNAPSHOT_ID = '20260214T103000Z';
+// 固定 IV（仅测试用；生产必须每次随机）
+const FIXED_IV = new Uint8Array([0,1,2,3,4,5,6,7,8,9,10,11]);
+const FIXED_WRAP_IV = new Uint8Array([11,10,9,8,7,6,5,4,3,2,1,0]);
+
+const utf8 = (s) => new TextEncoder().encode(s);
+const toHex = (buf) => Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const normRecovery = (c) => c.replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+
+async function sha256Hex(str) {
+  const d = await crypto.subtle.digest('SHA-256', utf8(str));
+  return toHex(d);
+}
+async function passwordSalt() {
+  const h = await crypto.subtle.digest('SHA-256', utf8('upbookmarks/test/salt/password'));
+  return new Uint8Array(h).slice(0, P.KDF_PASSWORD_SALT_BYTES);
+}
+async function recoverySalt() {
+  const h = await crypto.subtle.digest('SHA-256', utf8('upbookmarks/test/salt/recovery'));
+  return new Uint8Array(h).slice(0, P.KDF_RECOVERY_SALT_BYTES);
+}
+async function kekFromPassword(password, salt) {
+  const base = await crypto.subtle.importKey('raw', utf8(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: P.KDF_PASSWORD_ITERATIONS, hash: 'SHA-256' },
+    base, { name: P.CIPHER, length: P.KEK_BYTES * 8 }, true, ['wrapKey', 'unwrapKey']);
+}
+async function kekFromRecovery(code, salt) {
+  const base = await crypto.subtle.importKey('raw', utf8(normRecovery(code)), 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt, info: utf8(P.KDF_RECOVERY_INFO) },
+    base, { name: P.CIPHER, length: P.KEK_BYTES * 8 }, true, ['wrapKey', 'unwrapKey']);
+}
+const aad = () => utf8(`${P.AAD_PREFIX}|${P.FORMAT_VERSION}|${AAD_MACHINE}|${AAD_SNAPSHOT_ID}`);
+
+async function run() {
+  const out = [];
+  const rec = (k, v) => out.push(`${k}=${v}`);
+
+  try {
+    // C1 口令路径的 KEK（导出 raw 以便与 Node 逐字节比较）
+    const pwdKek = await kekFromPassword(PASSWORD, await passwordSalt());
+    rec('C1.passwordKekHex', toHex(await crypto.subtle.exportKey('raw', pwdKek)));
+
+    // C2 恢复码路径的 KEK
+    const recKek = await kekFromRecovery(RECOVERY_CODE, await recoverySalt());
+    rec('C2.recoveryKekHex', toHex(await crypto.subtle.exportKey('raw', recKek)));
+
+    // C3 用固定输入构造 DEK，并用 KEK 包裹（固定 IV，保证可复现）
+    const dekRaw = await crypto.subtle.digest('SHA-256', utf8('upbookmarks/test/dek/seed'));
+    rec('C3.dekHex', toHex(dekRaw));
+    const dek = await crypto.subtle.importKey('raw', new Uint8Array(dekRaw), P.CIPHER, true, ['encrypt', 'decrypt']);
+    const wrapped = await crypto.subtle.wrapKey('raw', dek, pwdKek, { name: P.CIPHER, iv: FIXED_WRAP_IV, tagLength: P.GCM_TAG_BITS });
+    rec('C3.wrappedDekHex', toHex(wrapped));
+
+    // C4 解包回来，确认与 C3 的 DEK 一致
+    const unwrapped = await crypto.subtle.unwrapKey(
+      'raw', wrapped, pwdKek, { name: P.CIPHER, iv: FIXED_WRAP_IV, tagLength: P.GCM_TAG_BITS },
+      { name: P.CIPHER, length: P.DEK_BYTES * 8 }, true, ['encrypt', 'decrypt']);
+    rec('C4.unwrappedDekHex', toHex(await crypto.subtle.exportKey('raw', unwrapped)));
+
+    // C5 AES-GCM 加密（固定 IV + AAD），明文用固定 JSON
+    const plaintext = JSON.stringify({ bookmarks: { children: [{ title: '书签栏', children: [{ title: '示例 · 中文', url: 'https://example.com/', dateAdded: 1739000000000 }] }] }, settings: { homepageOverride: 'https://example.com/' } });
+    rec('C5.plaintextSha256', await sha256Hex(plaintext));
+    const ct = await crypto.subtle.encrypt(
+      { name: P.CIPHER, iv: FIXED_IV, tagLength: P.GCM_TAG_BITS, additionalData: aad() }, dek, utf8(plaintext));
+    rec('C5.ciphertextB64', toB64(ct));
+
+    // C6 解密回来，确认明文一致
+    const pt = await crypto.subtle.decrypt(
+      { name: P.CIPHER, iv: FIXED_IV, tagLength: P.GCM_TAG_BITS, additionalData: aad() }, dek, ct);
+    rec('C6.decryptedSha256', await sha256Hex(new TextDecoder().decode(pt)));
+    rec('C6.roundTripOk', String(new TextDecoder().decode(pt) === plaintext));
+
+    // C7 AAD 不匹配必须失败
+    try {
+      await crypto.subtle.decrypt(
+        { name: P.CIPHER, iv: FIXED_IV, tagLength: P.GCM_TAG_BITS, additionalData: utf8('upbookmarks|1|laptop|20260214T103000Z') },
+        dek, ct);
+      rec('C7.aadMismatchRejected', 'false');
+    } catch (e) {
+      rec('C7.aadMismatchRejected', 'true');
+    }
+
+    // C8 现有能力探测
+    rec('C8.hasWrapKey', String(typeof crypto.subtle.wrapKey === 'function'));
+    rec('C8.hasHkdf', String(typeof crypto.subtle.importKey === 'function'));
+    rec('C8.isSecureContext', String(window.isSecureContext));
+    rec('C8.userAgent', navigator.userAgent);
+    rec('C9.done', 'true');
+  } catch (e) {
+    rec('ERROR', `${e.name}: ${e.message}`);
+    rec('C9.done', 'false');
+  }
+
+  document.getElementById('out').textContent = out.join('\n');
+
+  // 把结果回报给本地测试服务（若存在）。返回后由服务端结束进程，不依赖 --dump-dom。
+  try {
+    await fetch('/result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: out.join('\n'),
+    });
+  } catch (e) {
+    // 没有服务端时忽略；此时结果仍在页面上
+  }
+}
+
+run();
+</script>
+</body>
+</html>

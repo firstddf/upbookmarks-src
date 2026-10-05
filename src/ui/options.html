@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>upbookmarks · 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<header>
+  <h1>upbookmarks</h1>
+  <p class="sub">把书签与设置加密后备份到 Gitee 私有仓库</p>
+</header>
+
+<!-- 能力边界：如实展示，不隐藏平台限制 -->
+<section id="capabilities" class="panel hint" hidden>
+  <strong>能力边界</strong>
+  <p id="capabilities-text"></p>
+</section>
+
+<section class="panel">
+  <h2>1 · 仓库配置</h2>
+  <div class="grid">
+    <label>仓库所有者 <input id="owner" type="text" placeholder="例如 firstddf" autocomplete="off"></label>
+    <label>仓库名 <input id="repo" type="text" placeholder="例如 upbookmarks" autocomplete="off"></label>
+    <label class="span2">个人访问令牌（权限只需 projects）
+      <span class="pw">
+        <input id="pat" type="password" autocomplete="off" placeholder="粘贴令牌">
+        <button type="button" class="pw-toggle" data-target="pat" hidden>显示</button>
+        <button type="button" id="btn-copy-pat" hidden>复制</button>
+      </span>
+    </label>
+    <label>本机名称 <input id="machine" type="text" placeholder="desktop / laptop" autocomplete="off"></label>
+  </div>
+  <div class="row">
+    <button id="save-config">保存配置</button>
+    <span id="config-state" class="muted"></span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>2 · 解锁</h2>
+  <p class="muted" id="vault-state">正在检查仓库状态…</p>
+
+  <div id="setup-block" hidden>
+    <p>这个仓库还没有初始化。建立时会生成一个<strong>恢复码</strong>，<strong>只显示一次</strong>，请当场抄写或打印。</p>
+    <p class="req" id="setup-requirement"></p>
+
+    <p class="muted">每一段填一个词（每段至少 2 个字符）。分隔符由程序插入，你不用管标点。</p>
+    <div class="segs" id="setup-segs">
+      <input type="text" data-seg="1" placeholder="第 1 段" autocomplete="off">
+      <input type="text" data-seg="2" placeholder="第 2 段" autocomplete="off">
+      <input type="text" data-seg="3" placeholder="第 3 段" autocomplete="off">
+      <input type="text" data-seg="4" placeholder="第 4 段" autocomplete="off">
+      <input type="text" data-seg="5" placeholder="第 5 段" autocomplete="off">
+      <input type="text" data-seg="6" placeholder="第 6 段" autocomplete="off">
+      <input type="text" data-seg="7" class="opt" placeholder="第 7 段（可选，推荐）" autocomplete="off">
+      <input type="text" data-seg="8" class="opt" placeholder="第 8 段（可选）" autocomplete="off">
+    </div>
+
+    <p class="muted" id="setup-strength">填完前 6 段后这里会显示是否达标。</p>
+    <p class="muted">
+      中文短语建议填到 <strong>7–8 段</strong>：中文用户常用的短语高度集中，单段熵低于英文单词。
+      第 7、8 段留空也可以，但它们能明显提高强度。
+    </p>
+
+    <details class="advanced">
+      <summary>已经有口令？改成手工输入整串</summary>
+      <label>整串主口令（自己写分隔符）
+        <span class="pw">
+          <input id="setup-password-manual" type="text" autocomplete="off" placeholder="例如：咖啡 雨伞 铁轨 …">
+          <button type="button" class="pw-toggle" data-target="setup-password-manual" hidden>隐藏</button>
+        </span>
+      </label>
+      <p class="muted">填了这里就以此为准，上面的分段输入会被忽略。</p>
+    </details>
+
+    <div class="row">
+      <button id="btn-setup" class="primary">首次建立仓库</button>
+    </div>
+  </div>
+
+  <div id="unlock-block" hidden>
+    <p class="muted">主口令按段填（与建立时一样）；或者直接粘贴整串；忘记主口令时填恢复码。</p>
+    <div class="segs" id="unlock-segs">
+      <input type="text" data-seg="1" placeholder="第 1 段" autocomplete="off">
+      <input type="text" data-seg="2" placeholder="第 2 段" autocomplete="off">
+      <input type="text" data-seg="3" placeholder="第 3 段" autocomplete="off">
+      <input type="text" data-seg="4" placeholder="第 4 段" autocomplete="off">
+      <input type="text" data-seg="5" placeholder="第 5 段" autocomplete="off">
+      <input type="text" data-seg="6" placeholder="第 6 段" autocomplete="off">
+      <input type="text" data-seg="7" class="opt" placeholder="第 7 段（若当时填了）" autocomplete="off">
+      <input type="text" data-seg="8" class="opt" placeholder="第 8 段（若当时填了）" autocomplete="off">
+    </div>
+    <details class="advanced">
+      <summary>改成手工输入整串 / 使用恢复码</summary>
+      <div class="grid">
+        <label class="span2">整串主口令（含分隔符）
+          <span class="pw">
+            <input id="unlock-password" type="text" autocomplete="current-password">
+            <button type="button" class="pw-toggle" data-target="unlock-password" hidden>隐藏</button>
+          </span>
+        </label>
+        <label class="span2">恢复码（忘记主口令时使用）
+          <input id="unlock-recovery" type="text" autocomplete="off" placeholder="XXXXX-XXXXX-…">
+        </label>
+      </div>
+    </details>
+    <div class="row">
+      <button id="btn-unlock" class="primary">解锁</button>
+      <button id="btn-lock" hidden>立即锁定</button>
+    </div>
+
+    <div class="req remember">
+      <label class="inline">
+        <input id="remember-enabled" type="checkbox">
+        <strong>信任此设备</strong>：不活动超过
+        <input id="remember-days" type="number" min="1" max="90" value="3" class="num">
+        天需重新输入口令
+      </label>
+      <p class="muted" id="remember-note"></p>
+    </div>
+    <p class="muted">
+      会话内免输始终开启（口令只存在内存，关掉浏览器就失效）。
+      「信任此设备」会把口令**加密后写入本机磁盘**，以便重启浏览器后也不用输入。
+    </p>
+  </div>
+
+  <div id="recovery-card" class="panel warn" hidden>
+    <strong>请立刻保存这个恢复码</strong>
+    <pre id="recovery-code"></pre>
+    <p class="muted">它只显示这一次。忘记主口令时，它是唯一能解开备份的东西。
+      不要把它存在 Gitee 仓库里，也不要和备份放在一起。</p>
+    <div class="row">
+      <button id="btn-copy-recovery">复制</button>
+      <button id="btn-confirm-recovery" class="primary">我已抄好并妥善保存</button>
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="ops" hidden>
+  <h2>3 · 备份与还原</h2>
+  <div class="row">
+    <button id="btn-upload" class="primary">上传本机快照</button>
+    <button id="btn-refresh">刷新云端快照</button>
+  </div>
+  <p class="muted" id="op-state"></p>
+
+  <div id="collision-warning" class="panel warn" hidden>
+    <strong>检测到机器名冲突</strong>
+    <p id="collision-text"></p>
+    <p class="muted">两台不同的机器用了同一个名字，它们的备份会落进同一个目录，
+      表现为「看起来是同一台机器」，保留策略也会把两份历史混在一起按时间清理。
+      请把其中一台改成别的名字。</p>
+  </div>
+
+  <h3>云端快照</h3>
+  <table id="snapshots">
+    <thead><tr><th>来源机器</th><th>浏览器</th><th>快照</th><th>书签</th><th>大小</th><th>操作</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="muted" id="snapshots-empty" hidden>云端还没有任何快照。</p>
+
+  <div id="preview-block" class="panel" hidden>
+    <h3>还原预览</h3>
+    <p id="preview-text"></p>
+    <div class="row">
+      <label class="inline">策略
+        <select id="strategy">
+          <option value="replace">整树替换（精确还原，会清掉目标文件夹里的现有内容）</option>
+          <option value="append">追加合并（保留本机现有内容，可能与云端混合）</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <button id="btn-restore" class="primary">执行还原</button>
+      <button id="btn-cancel-preview">取消</button>
+    </div>
+  </div>
+
+  <div class="req remember">
+    <label class="inline">
+      <input id="auto-backup" type="checkbox">
+      <strong>自动备份</strong>：每
+      <input id="auto-minutes" type="number" min="5" max="1440" value="60" class="num">
+      分钟检查一次，书签或设置变化后也会自动上传
+    </label>
+    <p class="muted" id="auto-note"></p>
+    <p class="muted">
+      <strong>前提</strong>：必须启用上面的「信任此设备」。原因是后台脚本拿不到你手输的口令 ——
+      没有它就无法加密上传。未启用时自动备份不会执行，也不会偷偷把密钥落盘。
+    </p>
+  </div>
+
+  <div class="row">
+    <button id="btn-recover">从「还原前备份」恢复</button>
+    <span class="muted" id="backup-state"></span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>4 · 换主口令</h2>
+  <div class="grid">
+    <label>当前口令 <input id="cur-password" type="password" autocomplete="current-password"></label>
+    <label>新口令 <input id="new-password" type="password" autocomplete="new-password"></label>
+  </div>
+  <div class="row">
+    <button id="btn-change-password">轮换主口令</button>
+    <span class="muted">轮换不会重加密历史快照。</span>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>日志</h2>
+  <pre id="log" class="log"></pre>
+  <p class="muted">
+    <button id="btn-diag">诊断（在本页读一次存储）</button>
+    配置存不进去时点它 —— 结果直接打在下方的日志里，不做任何跳转。
+  </p>
+</section>
+
+<script type="module" src="options.js"></script>
+</body>
+</html>

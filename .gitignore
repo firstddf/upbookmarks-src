@@ -1,0 +1,22 @@
+# 构建产物（可由 node tools/build.mjs 重新生成）
+build/
+dist/
+
+# 发布附件（可由 node tools/release.mjs 重新生成；它们只应出现在 Release 页，不进源码仓库）
+release/
+
+# 测试与探针的运行报告
+# 里面含运行痕迹与仓库路径，虽然不含令牌，但不必进版本库
+tools/out/
+
+# 依赖与临时文件
+node_modules/
+*.log
+*.tmp
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
